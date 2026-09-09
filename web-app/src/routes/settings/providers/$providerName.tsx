@@ -67,6 +67,24 @@ function llamacppBackendLabel(id: string): string {
   return LLAMACPP_BACKEND_LABELS[backend.toLowerCase()] ?? backend.toUpperCase()
 }
 
+const LLAMACPP_BACKEND_ORDER = [
+  'openvino',
+  'sycl',
+  'cuda',
+  'vulkan',
+  'hip',
+  'rocm',
+  'metal',
+  'opencl',
+  'cpu',
+]
+
+function llamacppBackendOrder(id: string): number {
+  const backend = id.match(/^([A-Za-z]+?)(\d+)$/)?.[1]?.toLowerCase() ?? id
+  const index = LLAMACPP_BACKEND_ORDER.indexOf(backend)
+  return index === -1 ? LLAMACPP_BACKEND_ORDER.length : index
+}
+
 function LlamacppBackendSettings() {
   const { t } = useTranslation()
   const serviceHub = useServiceHub()
@@ -79,13 +97,21 @@ function LlamacppBackendSettings() {
     setActivations,
   } = useLlamacppDevices()
   const devices = detectedDevices ?? []
+  const orderedDevices = [...devices].sort(
+    (a, b) =>
+      llamacppBackendOrder(a.id) - llamacppBackendOrder(b.id) ||
+      a.id.localeCompare(b.id)
+  )
 
   useEffect(() => {
     fetchDevices()
   }, [fetchDevices])
 
   const toggleDevice = async (deviceId: string, enabled: boolean) => {
-    await setActivations({ [deviceId]: enabled })
+    const updates = Object.fromEntries(
+      devices.map((device) => [device.id, enabled && device.id === deviceId])
+    )
+    await setActivations(updates)
     serviceHub.models().stopAllModels()
     const models = await serviceHub.models().getActiveModels()
     setActiveModels(models || [])
@@ -119,7 +145,7 @@ function LlamacppBackendSettings() {
           })}
         </div>
       ) : (
-        devices.map((device) => (
+        orderedDevices.map((device) => (
           <CardItem
             key={device.id}
             title={llamacppBackendLabel(device.id)}

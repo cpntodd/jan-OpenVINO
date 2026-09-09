@@ -115,6 +115,12 @@ const h = vi.hoisted(() => {
     setModelLoadError: vi.fn(),
   }
 
+  const llamacppDevices = [
+    { id: 'SYCL0', name: 'Intel Arc B580', mem: 11605, free: 10000, activated: false },
+    { id: 'OPENVINO0', name: 'OpenVINO Runtime', mem: 15903, free: 15903, activated: true },
+  ]
+  const setActivations = vi.fn().mockResolvedValue(undefined)
+
   const params: any = { providerName: 'openai' }
 
   return {
@@ -135,6 +141,8 @@ const h = vi.hoisted(() => {
     modelsSvc,
     dialogSvc,
     modelLoad,
+    llamacppDevices,
+    setActivations,
     params,
   }
 })
@@ -312,7 +320,13 @@ vi.mock('@/hooks/useModelLoad', () => ({
 }))
 
 vi.mock('@/hooks/useLlamacppDevices', () => {
-  const hook: any = () => ({ fetchDevices: vi.fn() })
+  const hook: any = () => ({
+    devices: h.llamacppDevices,
+    loading: false,
+    error: null,
+    fetchDevices: vi.fn(),
+    setActivations: h.setActivations,
+  })
   hook.getState = () => ({ fetchDevices: vi.fn() })
   return { useLlamacppDevices: hook }
 })
@@ -376,6 +390,9 @@ beforeEach(() => {
   h.modelsSvc.stopAllModels = vi.fn().mockResolvedValue(undefined)
   h.modelsSvc.checkMmprojExists = vi.fn().mockResolvedValue(false)
   h.dialogSvc.open = vi.fn().mockResolvedValue(null)
+  h.setActivations.mockClear()
+  h.llamacppDevices[0].activated = false
+  h.llamacppDevices[1].activated = true
 })
 
 describe('ProviderDetail route', () => {
@@ -434,6 +451,31 @@ describe('ProviderDetail route', () => {
       h.params.providerName = 'llamacpp'
       renderComponent()
       expect(screen.getByTestId('import-vision')).toBeInTheDocument()
+    })
+
+    it('orders OpenVINO before SYCL and makes backend selection exclusive', async () => {
+      h.params.providerName = 'llamacpp'
+      renderComponent()
+
+      await waitFor(() => {
+        expect(screen.getByText('OpenVINO')).toBeInTheDocument()
+        expect(screen.getByText('SYCL')).toBeInTheDocument()
+      })
+
+      // The provider's top-level active switch appears before backend controls.
+      const switches = screen.getAllByTestId('provider-switch').slice(1)
+      expect(switches).toHaveLength(2)
+      expect((switches[0] as HTMLInputElement).checked).toBe(true)
+      expect((switches[1] as HTMLInputElement).checked).toBe(false)
+
+    fireEvent.click(switches[1])
+
+      await waitFor(() => {
+        expect(h.setActivations).toHaveBeenCalledWith({
+          SYCL0: true,
+          OPENVINO0: false,
+        })
+      })
     })
   })
 
