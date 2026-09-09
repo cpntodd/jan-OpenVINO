@@ -3,7 +3,6 @@ import { route } from '@/constants/routes'
 import SettingsMenu from '@/containers/SettingsMenu'
 import HeaderPage from '@/containers/HeaderPage'
 import { Card, CardItem } from '@/containers/Card'
-import { Switch } from '@/components/ui/switch'
 import { Progress } from '@/components/ui/progress'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { useHardware, type GPU } from '@/hooks/useHardware'
@@ -19,7 +18,6 @@ import type {
 import { cn, formatMegaBytes } from '@/lib/utils'
 import { toNumber } from '@/utils/number'
 import { useModelProvider } from '@/hooks/useModelProvider'
-import { useAppState } from '@/hooks/useAppState'
 import { Button } from '@/components/ui/button'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -178,13 +176,9 @@ function selectedDevice(group: GpuGroup): ActiveDevice {
 function GpuGroupCard({
   group,
   gpus,
-  onToggle,
-  onSelect,
 }: {
   group: GpuGroup
   gpus: GPU[]
-  onToggle: () => void
-  onSelect: (deviceId: string) => void
 }) {
   const { t } = useTranslation()
   const activated = group.devices.some((device) => device.activated)
@@ -234,30 +228,12 @@ function GpuGroupCard({
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {group.devices.length > 1 ? (
               group.devices.map((groupDevice) => {
-                const isSelected = groupDevice.id === device.id
                 return (
-                  <button
+                  <BackendChip
                     key={groupDevice.id}
-                    type="button"
-                    onClick={() => onSelect(groupDevice.id)}
-                    title={t('settings:hardware.backendSelectDesc')}
-                    className={cn(
-                      'inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-xs uppercase tracking-wider transition-colors',
-                      isSelected
-                        ? 'border-primary/60 text-foreground'
-                        : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'size-1.5 rounded-full',
-                        isSelected && activated
-                          ? 'bg-primary'
-                          : 'bg-muted-foreground/50'
-                      )}
-                    />
-                    {backendLabel(parseDeviceId(groupDevice.id).backend)}
-                  </button>
+                    label={backendLabel(parseDeviceId(groupDevice.id).backend)}
+                    active={groupDevice.activated}
+                  />
                 )
               })
             ) : (
@@ -270,7 +246,6 @@ function GpuGroupCard({
             )}
           </div>
         </div>
-        <Switch checked={activated} onCheckedChange={onToggle} />
       </div>
 
       <div className={cn('mt-4', !activated && 'opacity-60')}>
@@ -354,8 +329,6 @@ function HardwareContent() {
     updateSystemUsage,
     pollingPaused,
   } = useHardware()
-  const setActiveModels = useAppState((state) => state.setActiveModels)
-
   const { providers } = useModelProvider()
   const llamacpp = providers.find((p) => p.provider === 'llamacpp')
 
@@ -366,14 +339,12 @@ function HardwareContent() {
     devices: llamacppDevices,
     loading: llamacppDevicesLoading,
     error: llamacppDevicesError,
-    setActivations,
     fetchDevices,
   } = IS_MACOS
     ? {
         devices: [],
         loading: false,
         error: null,
-        setActivations: async () => {},
         fetchDevices: () => {},
       }
     : llamacppDevicesResult
@@ -451,31 +422,6 @@ function HardwareContent() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const applyActivations = (updates: Record<string, boolean>) => {
-    setActivations(updates)
-    serviceHub.models().stopAllModels()
-    serviceHub
-      .models()
-      .getActiveModels()
-      .then((models) => setActiveModels(models || []))
-  }
-
-  const handleToggleGroup = (group: GpuGroup) => {
-    const activated = group.devices.some((device) => device.activated)
-    const updates: Record<string, boolean> = {}
-    for (const device of group.devices) updates[device.id] = false
-    if (!activated) updates[selectedDevice(group).id] = true
-    applyActivations(updates)
-  }
-
-  const handleSelectBackend = (group: GpuGroup, deviceId: string) => {
-    const updates: Record<string, boolean> = {}
-    for (const device of group.devices) {
-      updates[device.id] = device.id === deviceId
-    }
-    applyActivations(updates)
   }
 
   const gpus = hardwareData.gpus ?? []
@@ -671,10 +617,6 @@ function HardwareContent() {
                           key={group.key}
                           group={group}
                           gpus={gpus}
-                          onToggle={() => handleToggleGroup(group)}
-                          onSelect={(deviceId) =>
-                            handleSelectBackend(group, deviceId)
-                          }
                         />
                       ))}
                     </div>

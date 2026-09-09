@@ -187,7 +187,7 @@ describe('Hardware Settings', () => {
     })
   })
 
-  it('merges multi-backend devices into one card with a backend selector', async () => {
+  it('merges multi-backend devices into one read-only card', async () => {
     llamacpp.devices = [
       { id: 'Vulkan0', name: 'RTX 3090', mem: 24824, free: 24240, activated: false },
       { id: 'CUDA0', name: 'RTX 3090', mem: 24127, free: 1259, activated: true },
@@ -199,7 +199,7 @@ describe('Hardware Settings', () => {
       expect(screen.getAllByText('RTX 3090').length).toBe(1)
       expect(screen.getByText('CUDA')).toBeInTheDocument()
       expect(screen.getByText('Vulkan')).toBeInTheDocument()
-      expect(screen.getAllByTestId('switch').length).toBe(1)
+      expect(screen.queryByTestId('switch')).not.toBeInTheDocument()
     })
   })
 
