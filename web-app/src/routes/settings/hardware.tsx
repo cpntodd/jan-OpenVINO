@@ -34,6 +34,7 @@ const BACKEND_LABELS: Record<string, string> = {
   hip: 'ROCm (HIP)',
   rocm: 'ROCm',
   opencl: 'OpenCL',
+  openvino: 'OpenVINO',
   metal: 'Metal',
   cpu: 'CPU',
 }
@@ -61,6 +62,9 @@ function findGpuForDevice(
   }
   if (key === 'cuda') {
     return gpus.find((gpu) => gpu.nvidia_info?.index === index)
+  }
+  if (key === 'sycl' || key === 'openvino') {
+    return gpus.find((gpu) => gpu.vulkan_info?.index === index)
   }
   return undefined
 }

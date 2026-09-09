@@ -178,6 +178,20 @@ SYCL and OpenVINO are alternative engine variants; they are not a hybrid
 execution path. SYCL packages include the oneAPI runtime libraries, while the
 Intel GPU driver and Level Zero implementation remain system dependencies.
 
+To package both backends in one worker, source both toolchains and use the
+combined variant. Jan's Hardware settings can then select the enumerated
+OpenVINO or SYCL device for each model:
+
+```bash
+source /opt/intel/openvino/setupvars.sh
+source /opt/intel/oneapi/setvars.sh
+make build-engine JAN_ENGINE_VARIANT=openvino-sycl JAN_ENGINE_JOBS=10
+```
+
+For the combined worker, set `GGML_OPENVINO_DEVICE=GPU` and
+`ONEAPI_DEVICE_SELECTOR=level_zero:gpu` in the Llama.cpp environment field
+when using the corresponding backend.
+
 </Tabs.Tab>
 
 <Tabs.Tab>
@@ -263,6 +277,20 @@ make dev JAN_ENGINE_VARIANT=sycl
 SYCL and OpenVINO are alternative engine variants; they are not a hybrid
 execution path. SYCL packages include the oneAPI runtime libraries, while the
 Intel GPU driver and Level Zero implementation remain system dependencies.
+
+To package both backends in one worker, source both toolchains and use the
+combined variant. Jan's Hardware settings can then select the enumerated
+OpenVINO or SYCL device for each model:
+
+```bash
+source /opt/intel/openvino/setupvars.sh
+source /opt/intel/oneapi/setvars.sh
+make build-engine JAN_ENGINE_VARIANT=openvino-sycl JAN_ENGINE_JOBS=10
+```
+
+For the combined worker, set `GGML_OPENVINO_DEVICE=GPU` and
+`ONEAPI_DEVICE_SELECTOR=level_zero:gpu` in the Llama.cpp environment field
+when using the corresponding backend.
 
 </Tabs.Tab>
 

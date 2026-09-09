@@ -299,6 +299,7 @@ endif
 #   rocm               hip  + vulkan   (needs ROCm/HIP)
 #   openvino           OpenVINO       (needs OpenVINO Runtime and OpenCL)
 #   sycl               Intel SYCL     (needs oneAPI DPC++/Level Zero)
+#   openvino-sycl      both Intel backends (needs OpenVINO and oneAPI)
 #   cuda13-hip-vulkan  all three       (needs the CUDA and the HIP toolkit)
 #
 # cuda12 and cuda13 cannot be combined: the CUDA major is whichever nvcc is on
