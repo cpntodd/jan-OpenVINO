@@ -298,6 +298,7 @@ endif
 #   cuda12             cuda + vulkan   (needs CUDA 12 toolkit on PATH)
 #   rocm               hip  + vulkan   (needs ROCm/HIP)
 #   openvino           OpenVINO       (needs OpenVINO Runtime and OpenCL)
+#   sycl               Intel SYCL     (needs oneAPI DPC++/Level Zero)
 #   cuda13-hip-vulkan  all three       (needs the CUDA and the HIP toolkit)
 #
 # cuda12 and cuda13 cannot be combined: the CUDA major is whichever nvcc is on
@@ -346,10 +347,11 @@ ENGINE_FEATURE_cuda13 := engine-cuda
 ENGINE_FEATURE_hip := engine-hip
 ENGINE_FEATURE_rocm := engine-hip
 ENGINE_FEATURE_openvino := engine-openvino
+ENGINE_FEATURE_sycl := engine-sycl
 
 ENGINE_UNKNOWN_TOKENS := $(strip $(foreach t,$(ENGINE_TOKENS),$(if $(ENGINE_FEATURE_$(t)),,$(t))))
 ifneq ($(ENGINE_UNKNOWN_TOKENS),)
-    $(error Unknown JAN_ENGINE_VARIANT '$(JAN_ENGINE_VARIANT)': no backend named '$(ENGINE_UNKNOWN_TOKENS)'. Tokens are cpu, vulkan, metal, cuda12, cuda13, hip/rocm, openvino, joined by '-')
+    $(error Unknown JAN_ENGINE_VARIANT '$(JAN_ENGINE_VARIANT)': no backend named '$(ENGINE_UNKNOWN_TOKENS)'. Tokens are cpu, vulkan, metal, cuda12, cuda13, hip/rocm, openvino, sycl, joined by '-')
 endif
 ifneq ($(word 2,$(filter cuda12 cuda13,$(ENGINE_TOKENS))),)
     $(error JAN_ENGINE_VARIANT '$(JAN_ENGINE_VARIANT)' names more than one CUDA major, which one build cannot carry)

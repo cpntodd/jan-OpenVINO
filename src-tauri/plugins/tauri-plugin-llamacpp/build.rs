@@ -178,6 +178,7 @@ mod engine {
         ("engine-hip", "-DGGML_HIP=ON"),
         ("engine-metal", "-DGGML_METAL=ON"),
         ("engine-openvino", "-DGGML_OPENVINO=ON"),
+        ("engine-sycl", "-DGGML_SYCL=ON"),
     ];
 
     /// The GPUs a HIP build targets when JAN_ENGINE_HIP_TARGETS is unset: the
@@ -196,6 +197,9 @@ mod engine {
         println!("cargo:rerun-if-env-changed=JAN_ENGINE_BUILD_LOG");
         println!("cargo:rerun-if-env-changed=JAN_ENGINE_BUILD_DIR");
         println!("cargo:rerun-if-env-changed=OpenVINO_DIR");
+        println!("cargo:rerun-if-env-changed=ONEAPI_ROOT");
+        println!("cargo:rerun-if-env-changed=GGML_SYCL_F16");
+        println!("cargo:rerun-if-env-changed=GGML_SYCL_DEVICE_ARCH");
 
         // Headers are always needed: the shim is our code and is compiled
         // here even when the archives come prebuilt, so it cannot drift from
@@ -483,6 +487,26 @@ mod engine {
                 let dir = dir.trim();
                 if !dir.is_empty() {
                     cfg.arg(format!("-DOpenVINO_DIR={dir}"));
+                }
+            }
+        }
+        if feature_enabled("engine-sycl") {
+            // The Intel SYCL backend is compiled by oneAPI's DPC++ compiler;
+            // using the host C++ compiler here produces a misleading CMake
+            // configure failure later when -fsycl is tested.
+            if on_path("icx") && on_path("icpx") {
+                cfg.arg("-DCMAKE_C_COMPILER=icx");
+                cfg.arg("-DCMAKE_CXX_COMPILER=icpx");
+            }
+            cfg.arg("-DGGML_SYCL_TARGET=INTEL");
+            cfg.arg(format!(
+                "-DGGML_SYCL_F16={}",
+                env::var("GGML_SYCL_F16").unwrap_or_else(|_| "ON".to_string())
+            ));
+            if let Ok(arch) = env::var("GGML_SYCL_DEVICE_ARCH") {
+                let arch = arch.trim();
+                if !arch.is_empty() {
+                    cfg.arg(format!("-DGGML_SYCL_DEVICE_ARCH={arch}"));
                 }
             }
         }

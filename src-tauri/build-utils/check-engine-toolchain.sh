@@ -75,6 +75,26 @@ if has_token openvino; then
   echo "engine toolchain: OpenVINO Runtime and OpenCL headers found"
 fi
 
+if has_token sycl; then
+  command -v icpx >/dev/null 2>&1 || {
+    echo "error: JAN_ENGINE_VARIANT=$VARIANT needs Intel oneAPI icpx on PATH" >&2
+    echo "       source /opt/intel/oneapi/setvars.sh before building" >&2
+    exit 1
+  }
+  command -v icx >/dev/null 2>&1 || {
+    echo "error: JAN_ENGINE_VARIANT=$VARIANT needs Intel oneAPI icx on PATH" >&2
+    echo "       source /opt/intel/oneapi/setvars.sh before building" >&2
+    exit 1
+  }
+  if [ -n "${ONEAPI_ROOT:-}" ]; then
+    [ -d "$ONEAPI_ROOT" ] || {
+      echo "error: ONEAPI_ROOT does not point to a directory: $ONEAPI_ROOT" >&2
+      exit 1
+    }
+  fi
+  echo "engine toolchain: Intel oneAPI icx/icpx found"
+fi
+
 command -v cmake >/dev/null 2>&1 || {
   echo "error: building the engine needs cmake on PATH" >&2
   exit 1
