@@ -35,6 +35,7 @@ import { toast } from 'sonner'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { predefinedProviders } from '@/constants/providers'
 import { useModelLoad } from '@/hooks/useModelLoad'
+import { useLlamacppDevices } from '@/hooks/useLlamacppDevices'
 import { useAppState } from '@/hooks/useAppState'
 import { useShallow } from 'zustand/shallow'
 import { DialogAddModel } from '@/containers/dialogs/AddModel'
@@ -48,6 +49,95 @@ import {
   supportsRemoteCatalog,
   fetchTopRemoteModels,
 } from '@/lib/remoteModelCatalog'
+
+const LLAMACPP_BACKEND_LABELS: Record<string, string> = {
+  cuda: 'CUDA',
+  vulkan: 'Vulkan',
+  sycl: 'SYCL',
+  openvino: 'OpenVINO',
+  hip: 'ROCm (HIP)',
+  rocm: 'ROCm',
+  metal: 'Metal',
+  opencl: 'OpenCL',
+  cpu: 'CPU',
+}
+
+function llamacppBackendLabel(id: string): string {
+  const backend = id.match(/^([A-Za-z]+?)(\d+)$/)?.[1] ?? id
+  return LLAMACPP_BACKEND_LABELS[backend.toLowerCase()] ?? backend.toUpperCase()
+}
+
+function LlamacppBackendSettings() {
+  const { t } = useTranslation()
+  const serviceHub = useServiceHub()
+  const setActiveModels = useAppState((state) => state.setActiveModels)
+  const {
+    devices: detectedDevices = [],
+    loading = false,
+    error = null,
+    fetchDevices,
+    setActivations,
+  } = useLlamacppDevices()
+  const devices = detectedDevices ?? []
+
+  useEffect(() => {
+    fetchDevices()
+  }, [fetchDevices])
+
+  const toggleDevice = async (deviceId: string, enabled: boolean) => {
+    await setActivations({ [deviceId]: enabled })
+    serviceHub.models().stopAllModels()
+    const models = await serviceHub.models().getActiveModels()
+    setActiveModels(models || [])
+  }
+
+  return (
+    <Card>
+      <CardItem
+        title={t('providers:llamacpp.backendsTitle', {
+          defaultValue: 'GPU backends',
+        })}
+        description={t('providers:llamacpp.backendsDescription', {
+          defaultValue:
+            'Choose which llama.cpp devices may be used for local inference. Changes apply after currently loaded models are stopped.',
+        })}
+        actions={
+          loading ? (
+            <span className="text-xs text-muted-foreground">
+              {t('common:loading', { defaultValue: 'Loading…' })}
+            </span>
+          ) : null
+        }
+      />
+      {error ? (
+        <div className="px-4 pb-4 text-xs text-muted-foreground">{error}</div>
+      ) : devices.length === 0 && !loading ? (
+        <div className="px-4 pb-4 text-xs text-muted-foreground">
+          {t('providers:llamacpp.backendsEmpty', {
+            defaultValue:
+              'No GPU backends are currently visible to the bundled llama.cpp worker.',
+          })}
+        </div>
+      ) : (
+        devices.map((device) => (
+          <CardItem
+            key={device.id}
+            title={llamacppBackendLabel(device.id)}
+            description={`${device.name} · ${device.id}`}
+            actions={
+              <Switch
+                checked={device.activated}
+                onCheckedChange={(checked) =>
+                  void toggleDevice(device.id, checked)
+                }
+              />
+            }
+          />
+        ))
+      )}
+    </Card>
+  )
+}
 
 // as route.threadsDetail
 export const Route = createFileRoute('/settings/providers/$providerName')({
@@ -670,6 +760,8 @@ function ProviderDetail() {
                   'flex-col-reverse'
               )}
             >
+              {isLlamacpp && <LlamacppBackendSettings />}
+
               {/* Settings — hidden for predefined remote providers since
                   api-key + base-url are both surfaced elsewhere / hidden. */}
               {!(
