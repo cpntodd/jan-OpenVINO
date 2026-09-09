@@ -140,12 +140,17 @@ source /opt/intel/openvino/setupvars.sh
 make build-engine JAN_ENGINE_VARIANT=openvino
 ```
 
-Run Jan with the OpenVINO GPU device selected:
+The OpenVINO worker defaults to the GPU for this build. To override the
+target, set the environment variable before launching Jan:
 
 ```bash
 export GGML_OPENVINO_DEVICE=GPU
 make dev JAN_ENGINE_VARIANT=openvino
 ```
+
+Use `CPU` or `NPU` instead when those targets are intentional. The same
+variable can be set in Jan's Llama.cpp environment settings for a packaged
+build.
 
 Use `GPU.0` or `GPU.1` when more than one Intel GPU is present. OpenVINO
 runtime libraries are staged beside the worker; the Intel GPU driver remains
@@ -199,12 +204,17 @@ source /opt/intel/openvino/setupvars.sh
 make build-engine JAN_ENGINE_VARIANT=openvino
 ```
 
-Run Jan with the OpenVINO GPU device selected:
+The OpenVINO worker defaults to the GPU for this build. To override the
+target, set the environment variable before launching Jan:
 
 ```bash
 export GGML_OPENVINO_DEVICE=GPU
 make dev JAN_ENGINE_VARIANT=openvino
 ```
+
+Use `CPU` or `NPU` instead when those targets are intentional. The same
+variable can be set in Jan's Llama.cpp environment settings for a packaged
+build.
 
 Use `GPU.0` or `GPU.1` when more than one Intel GPU is present. OpenVINO
 runtime libraries are staged beside the worker; the Intel GPU driver remains

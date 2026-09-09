@@ -47,6 +47,23 @@ struct Args {
 /// caller owns the loopback port outright (tests).
 const API_KEY_ENV: &str = "JAN_LLAMA_API_KEY";
 
+/// OpenVINO itself defaults to CPU when no target is supplied.  The worker is
+/// the only binary built with the selected engine feature, so set the
+/// OpenVINO default here rather than relying on the desktop process or an
+/// interactive shell to export it.  An explicit environment value remains
+/// authoritative, which keeps CPU/NPU overrides and existing llama.cpp env
+/// configuration working.
+#[cfg(feature = "engine-openvino")]
+fn configure_backend_environment() {
+    if std::env::var_os("GGML_OPENVINO_DEVICE").is_none() {
+        std::env::set_var("GGML_OPENVINO_DEVICE", "GPU");
+        eprintln!("jan-llama-worker: OpenVINO default device=GPU");
+    }
+}
+
+#[cfg(not(feature = "engine-openvino"))]
+fn configure_backend_environment() {}
+
 fn parse_args() -> Result<Args, String> {
     let mut out = Args {
         preset: None,
@@ -104,6 +121,8 @@ async fn main() {
         eprintln!("jan-llama-worker: {e}");
         std::process::exit(3);
     }
+
+    configure_backend_environment();
 
     // Must precede any ggml call, including device enumeration.
     tauri_plugin_llamacpp::engine::load_backend_modules();
