@@ -156,6 +156,28 @@ Use `GPU.0` or `GPU.1` when more than one Intel GPU is present. OpenVINO
 runtime libraries are staged beside the worker; the Intel GPU driver remains
 a system dependency.
 
+### Intel Arc with SYCL (source builds)
+
+SYCL uses Intel oneAPI and Level Zero directly. Source the oneAPI environment,
+then build the separate SYCL worker variant:
+
+```bash
+source /opt/intel/oneapi/setvars.sh
+make build-engine JAN_ENGINE_VARIANT=sycl JAN_ENGINE_JOBS=10
+```
+
+For Arc GPUs, select the Intel GPU through the SYCL runtime when launching
+Jan:
+
+```bash
+export ONEAPI_DEVICE_SELECTOR=level_zero:gpu
+make dev JAN_ENGINE_VARIANT=sycl
+```
+
+SYCL and OpenVINO are alternative engine variants; they are not a hybrid
+execution path. SYCL packages include the oneAPI runtime libraries, while the
+Intel GPU driver and Level Zero implementation remain system dependencies.
+
 </Tabs.Tab>
 
 <Tabs.Tab>
@@ -219,6 +241,28 @@ build.
 Use `GPU.0` or `GPU.1` when more than one Intel GPU is present. OpenVINO
 runtime libraries are staged beside the worker; the Intel GPU driver remains
 a system dependency.
+
+### Intel Arc with SYCL (source builds)
+
+SYCL uses Intel oneAPI and Level Zero directly. Source the oneAPI environment,
+then build the separate SYCL worker variant:
+
+```bash
+source /opt/intel/oneapi/setvars.sh
+make build-engine JAN_ENGINE_VARIANT=sycl JAN_ENGINE_JOBS=10
+```
+
+For Arc GPUs, select the Intel GPU through the SYCL runtime when launching
+Jan:
+
+```bash
+export ONEAPI_DEVICE_SELECTOR=level_zero:gpu
+make dev JAN_ENGINE_VARIANT=sycl
+```
+
+SYCL and OpenVINO are alternative engine variants; they are not a hybrid
+execution path. SYCL packages include the oneAPI runtime libraries, while the
+Intel GPU driver and Level Zero implementation remain system dependencies.
 
 </Tabs.Tab>
 

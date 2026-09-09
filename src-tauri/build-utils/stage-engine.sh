@@ -164,6 +164,50 @@ if [ -n "$openvino_module" ]; then
   echo "stage-engine: staged $ov_staged OpenVINO runtime libraries"
 fi
 
+# SYCL is also a dynamically loaded ggml backend.  The oneAPI compiler and
+# Level Zero loader are not part of a normal desktop installation, so copy the
+# redistributable oneAPI runtime libraries beside the worker for a portable
+# package.  The Intel GPU driver/Level Zero implementation remains a host
+# dependency, just as it does for OpenVINO.
+sycl_module=""
+for candidate in "$DEST"/libggml-sycl.* "$DEST"/ggml-sycl.dll; do
+  if [ -e "$candidate" ] || [ -L "$candidate" ]; then
+    sycl_module="$candidate"
+    break
+  fi
+done
+
+if [ -n "$sycl_module" ]; then
+  oneapi_root="${ONEAPI_ROOT:-/opt/intel/oneapi}"
+  [ -d "$oneapi_root" ] || {
+    echo "stage-engine: ggml-sycl was built but oneAPI root is missing: $oneapi_root" >&2
+    echo "stage-engine: set ONEAPI_ROOT to the oneAPI installation directory" >&2
+    exit 1
+  }
+
+  # These are the runtime families used by the Intel SYCL backend.  Search
+  # the installation rather than assuming a particular oneAPI component
+  # version (e.g. compiler/latest versus compiler/2026.0).
+  sycl_patterns=(
+    "libsycl.*" "libpi_level_zero.*" "libur_loader.*"
+    "libur_adapter_level_zero.*" "libdnnl.*" "libmkl_sycl_blas.*"
+    "libmkl_intel_lp64.*" "libmkl_core.*" "libtbb.*"
+    "libimf.*" "libsvml.*" "libintlc.*" "libirng.*"
+  )
+  sycl_staged=0
+  for pattern in "${sycl_patterns[@]}"; do
+    while IFS= read -r -d '' src; do
+      stage_lib "$src"
+      sycl_staged=$((sycl_staged + 1))
+    done < <(find -L "$oneapi_root" -type f -name "$pattern" -print0 2>/dev/null)
+  done
+  [ "$sycl_staged" -gt 0 ] || {
+    echo "stage-engine: no oneAPI SYCL runtime libraries found below $oneapi_root" >&2
+    exit 1
+  }
+  echo "stage-engine: staged $sycl_staged oneAPI SYCL runtime libraries"
+fi
+
 [ -n "$cuda_module" ] || exit 0
 
 # The module's own import names say which runtime it needs and with which
