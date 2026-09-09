@@ -51,6 +51,30 @@ if has_token hip || has_token rocm; then
   echo "engine toolchain: hipcc and rocwmma found"
 fi
 
+if has_token openvino; then
+  [ -n "${OpenVINO_DIR:-}" ] || {
+    echo "error: JAN_ENGINE_VARIANT=$VARIANT needs OpenVINO_DIR set (source setupvars.sh)" >&2
+    exit 1
+  }
+  [ -f "$OpenVINO_DIR/OpenVINOConfig.cmake" ] || {
+    echo "error: OpenVINOConfig.cmake not found under OpenVINO_DIR=$OpenVINO_DIR" >&2
+    echo "       set OpenVINO_DIR to the runtime/cmake directory" >&2
+    exit 1
+  }
+  case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    # Windows resolves OpenCL through the vcpkg toolchain passed to CMake.
+    ;;
+  *)
+    [ -f /usr/include/CL/cl.h ] || [ -f /usr/local/include/CL/cl.h ] || {
+      echo "error: the OpenVINO backend needs OpenCL headers (CL/cl.h)" >&2
+      exit 1
+    }
+    ;;
+  esac
+  echo "engine toolchain: OpenVINO Runtime and OpenCL headers found"
+fi
+
 command -v cmake >/dev/null 2>&1 || {
   echo "error: building the engine needs cmake on PATH" >&2
   exit 1

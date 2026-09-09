@@ -177,6 +177,7 @@ mod engine {
         ("engine-vulkan", "-DGGML_VULKAN=ON"),
         ("engine-hip", "-DGGML_HIP=ON"),
         ("engine-metal", "-DGGML_METAL=ON"),
+        ("engine-openvino", "-DGGML_OPENVINO=ON"),
     ];
 
     /// The GPUs a HIP build targets when JAN_ENGINE_HIP_TARGETS is unset: the
@@ -194,6 +195,7 @@ mod engine {
         println!("cargo:rerun-if-env-changed=JAN_ENGINE_HIP_TARGETS");
         println!("cargo:rerun-if-env-changed=JAN_ENGINE_BUILD_LOG");
         println!("cargo:rerun-if-env-changed=JAN_ENGINE_BUILD_DIR");
+        println!("cargo:rerun-if-env-changed=OpenVINO_DIR");
 
         // Headers are always needed: the shim is our code and is compiled
         // here even when the archives come prebuilt, so it cannot drift from
@@ -475,6 +477,14 @@ mod engine {
             // rocWMMA flash attention, as the previous engine shipped it; needs
             // rocwmma-dev, which check-engine-toolchain.sh asserts.
             cfg.arg("-DGGML_HIP_ROCWMMA_FATTN=ON");
+        }
+        if feature_enabled("engine-openvino") {
+            if let Ok(dir) = env::var("OpenVINO_DIR") {
+                let dir = dir.trim();
+                if !dir.is_empty() {
+                    cfg.arg(format!("-DOpenVINO_DIR={dir}"));
+                }
+            }
         }
         if feature_enabled("engine-cuda") {
             // NCCL is multi-GPU collective communication for distributed
