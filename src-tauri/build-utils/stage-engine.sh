@@ -32,7 +32,12 @@ find "$DEST" -maxdepth 1 \( -name 'libggml*' -o -name 'ggml*.dll' \
   -o -name 'cudart64_*.dll' -o -name 'cublas*.dll' \
   -o -name 'libopenvino*.so*' -o -name 'libtbb*.so*' \
   -o -name 'libittnotify*.so*' -o -name 'openvino*.dll' \
-  -o -name 'tbb*.dll' \) -exec rm -f {} +
+  -o -name 'tbb*.dll' -o -name 'libsycl*.so*' \
+  -o -name 'libpi_level_zero*.so*' -o -name 'libur_*.so*' \
+  -o -name 'libmkl_*.so*' -o -name 'libdnnl*.so*' \
+  -o -name 'libimf*.so*' -o -name 'libsvml*.so*' \
+  -o -name 'libintlc*.so*' -o -name 'libirng*.so*' \
+  -o -name 'sycl*.dll' -o -name 'mkl_*.dll' -o -name 'dnnl*.dll' \) -exec rm -f {} +
 
 install -m755 "$WORKER" "$DEST/jan-llama-worker$EXE"
 echo "stage-engine: staged jan-llama-worker$EXE"
