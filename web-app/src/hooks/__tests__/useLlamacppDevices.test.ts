@@ -85,6 +85,35 @@ describe('useLlamacppDevices', () => {
     expect(mockGetLlamacppDevices).toHaveBeenCalledOnce()
   })
 
+  it('exposes the paired SYCL device when OpenVINO is the only reported backend', async () => {
+    mockGetLlamacppDevices.mockResolvedValue([
+      { id: 'OPENVINO0', name: 'OpenVINO Runtime', mem: 15903, free: 15903 },
+    ])
+
+    const { result } = renderHook(() => useLlamacppDevices())
+
+    await act(async () => {
+      await result.current.fetchDevices()
+    })
+
+    expect(result.current.devices).toEqual([
+      {
+        id: 'OPENVINO0',
+        name: 'OpenVINO Runtime',
+        mem: 15903,
+        free: 15903,
+        activated: true,
+      },
+      {
+        id: 'SYCL0',
+        name: 'Intel GPU (SYCL)',
+        mem: 15903,
+        free: 15903,
+        activated: true,
+      },
+    ])
+  })
+
   it('should clear error', () => {
     const { result } = renderHook(() => useLlamacppDevices())
 
