@@ -73,8 +73,24 @@ fi
 stage_lib() {
   local name
   name="$(basename "$1")"
-  cp -Pf "$1" "$DEST/$name"
-  [ -L "$1" ] || chmod 644 "$DEST/$name"
+  if [ -L "$1" ]; then
+    # Some oneAPI component directories expose cross-component links such as
+    # compiler/.../libumf.so -> ../../../../../umf/latest/lib/libumf.so.
+    # Preserving that path beside the worker would point outside the bundle.
+    # All staged runtime files share one directory, so relink to the resolved
+    # target's basename instead.
+    local target
+    target="$(readlink -f "$1")"
+    [ -f "$target" ] || {
+      echo "stage-engine: broken runtime symlink: $1" >&2
+      exit 1
+    }
+    rm -f "$DEST/$name"
+    ln -s "$(basename "$target")" "$DEST/$name"
+  else
+    cp -Pf "$1" "$DEST/$name"
+    chmod 644 "$DEST/$name"
+  fi
 }
 
 exts=("$LIBEXT")
