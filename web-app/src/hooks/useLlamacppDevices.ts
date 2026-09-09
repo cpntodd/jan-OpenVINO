@@ -35,6 +35,7 @@ function exposePairedSyclDevice(devices: DeviceList[]): DeviceList[] {
           : openvino.name,
       mem: openvino.mem,
       free: openvino.free,
+      activated: false,
     },
   ]
 }
