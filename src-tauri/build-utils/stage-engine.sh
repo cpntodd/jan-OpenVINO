@@ -29,7 +29,10 @@ mkdir -p "$DEST"
 # The bundle globs ship whatever is in DEST, including an earlier variant's leftovers.
 find "$DEST" -maxdepth 1 \( -name 'libggml*' -o -name 'ggml*.dll' \
   -o -name 'libcudart.so*' -o -name 'libcublas*.so*' \
-  -o -name 'cudart64_*.dll' -o -name 'cublas*.dll' \) -exec rm -f {} +
+  -o -name 'cudart64_*.dll' -o -name 'cublas*.dll' \
+  -o -name 'libopenvino*.so*' -o -name 'libtbb*.so*' \
+  -o -name 'libittnotify*.so*' -o -name 'openvino*.dll' \
+  -o -name 'tbb*.dll' \) -exec rm -f {} +
 
 install -m755 "$WORKER" "$DEST/jan-llama-worker$EXE"
 echo "stage-engine: staged jan-llama-worker$EXE"
@@ -103,6 +106,63 @@ if [ "$modules" -eq 0 ]; then
 fi
 
 echo "stage-engine: staged $staged ggml libraries ($modules backend modules) into $DEST"
+
+# OpenVINO is a dynamically loaded ggml backend. The backend module itself is
+# staged above, but its OpenVINO runtime and plugin libraries are not part of
+# the llama.cpp build tree. Copy the runtime beside the worker so a packaged
+# Jan process does not depend on a GUI-launched shell having sourced
+# setupvars.sh. OpenVINO_DIR points at runtime/cmake in the archive layout.
+openvino_module=""
+for candidate in "$DEST"/libggml-openvino.* "$DEST"/ggml-openvino.dll; do
+  if [ -e "$candidate" ] || [ -L "$candidate" ]; then
+    openvino_module="$candidate"
+    break
+  fi
+done
+
+if [ -n "$openvino_module" ]; then
+  [ -n "${OpenVINO_DIR:-}" ] || {
+    echo "stage-engine: ggml-openvino was built but OpenVINO_DIR is unset" >&2
+    exit 1
+  }
+  ov_runtime="$(cd "$(dirname "$OpenVINO_DIR")" && pwd)"
+  [ -d "$ov_runtime" ] || {
+    echo "stage-engine: OpenVINO runtime directory not found: $ov_runtime" >&2
+    exit 1
+  }
+
+  case "$LIBEXT" in
+  so)
+    ov_lib_dirs=("$ov_runtime/lib/intel64" "$ov_runtime/lib" "$ov_runtime/3rdparty/tbb/lib")
+    ov_patterns=("libopenvino*.so*" "libittnotify*.so*" "libtbb*.so*")
+    ;;
+  dylib)
+    ov_lib_dirs=("$ov_runtime/lib/intel64" "$ov_runtime/lib" "$ov_runtime/3rdparty/tbb/lib")
+    ov_patterns=("libopenvino*.dylib*" "libittnotify*.dylib*" "libtbb*.dylib*")
+    ;;
+  dll)
+    ov_lib_dirs=("$ov_runtime/bin/intel64/Release" "$ov_runtime/bin" "$ov_runtime/lib")
+    ov_patterns=("openvino*.dll" "tbb*.dll")
+    ;;
+  esac
+
+  ov_staged=0
+  for dir in "${ov_lib_dirs[@]}"; do
+    [ -d "$dir" ] || continue
+    for pattern in "${ov_patterns[@]}"; do
+      for src in "$dir"/$pattern; do
+        [ -e "$src" ] || [ -L "$src" ] || continue
+        stage_lib "$src"
+        ov_staged=$((ov_staged + 1))
+      done
+    done
+  done
+  [ "$ov_staged" -gt 0 ] || {
+    echo "stage-engine: no OpenVINO runtime libraries found below $ov_runtime" >&2
+    exit 1
+  }
+  echo "stage-engine: staged $ov_staged OpenVINO runtime libraries"
+fi
 
 [ -n "$cuda_module" ] || exit 0
 

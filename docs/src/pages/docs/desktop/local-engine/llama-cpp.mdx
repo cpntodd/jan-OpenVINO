@@ -129,6 +129,28 @@ Choose based on your CUDA version (check NVIDIA Control Panel):
 **Quick Test**: Start with `win-avx2-cuda-cu12.0-x64` for NVIDIA, `win-vulkan-x64` for AMD/Intel Arc, or `win-avx2-x64` for CPU-only.
 </Callout>
 
+### Intel Arc with OpenVINO (source builds)
+
+Install the Intel GPU driver, OpenVINO Runtime, and OpenCL development
+headers. From the Jan checkout, source OpenVINO's environment and build the
+worker:
+
+```bash
+source /opt/intel/openvino/setupvars.sh
+make build-engine JAN_ENGINE_VARIANT=openvino
+```
+
+Run Jan with the OpenVINO GPU device selected:
+
+```bash
+export GGML_OPENVINO_DEVICE=GPU
+make dev JAN_ENGINE_VARIANT=openvino
+```
+
+Use `GPU.0` or `GPU.1` when more than one Intel GPU is present. OpenVINO
+runtime libraries are staged beside the worker; the Intel GPU driver remains
+a system dependency.
+
 </Tabs.Tab>
 
 <Tabs.Tab>
@@ -165,6 +187,28 @@ Choose based on your CUDA version:
 <Callout type="info">
 **Quick Test**: Start with `linux-avx2-cuda-cu12.0-x64` for NVIDIA, `linux-vulkan-x64` for AMD/Intel Arc, or `linux-avx2-x64` for CPU-only.
 </Callout>
+
+### Intel Arc with OpenVINO (source builds)
+
+Install the Intel GPU driver, OpenVINO Runtime, and OpenCL development
+headers. From the Jan checkout, source OpenVINO's environment and build the
+worker:
+
+```bash
+source /opt/intel/openvino/setupvars.sh
+make build-engine JAN_ENGINE_VARIANT=openvino
+```
+
+Run Jan with the OpenVINO GPU device selected:
+
+```bash
+export GGML_OPENVINO_DEVICE=GPU
+make dev JAN_ENGINE_VARIANT=openvino
+```
+
+Use `GPU.0` or `GPU.1` when more than one Intel GPU is present. OpenVINO
+runtime libraries are staged beside the worker; the Intel GPU driver remains
+a system dependency.
 
 </Tabs.Tab>
 
