@@ -34,6 +34,7 @@ find "$DEST" -maxdepth 1 \( -name 'libggml*' -o -name 'ggml*.dll' \
   -o -name 'libittnotify*.so*' -o -name 'openvino*.dll' \
   -o -name 'tbb*.dll' -o -name 'libsycl*.so*' \
   -o -name 'libpi_level_zero*.so*' -o -name 'libur_*.so*' \
+  -o -name 'libumf*.so*' \
   -o -name 'libmkl_*.so*' -o -name 'libdnnl*.so*' \
   -o -name 'libimf*.so*' -o -name 'libsvml*.so*' \
   -o -name 'libintlc*.so*' -o -name 'libirng*.so*' \
@@ -195,8 +196,10 @@ if [ -n "$sycl_module" ]; then
   # version (e.g. compiler/latest versus compiler/2026.0).
   sycl_patterns=(
     "libsycl.*" "libpi_level_zero.*" "libur_loader.*"
-    "libur_adapter_level_zero.*" "libdnnl.*" "libmkl_sycl_blas.*"
-    "libmkl_intel_lp64.*" "libmkl_core.*" "libtbb.*"
+    "libur_adapter_level_zero.*" "libur_adapter_level_zero_v2.*"
+    "libumf.*" "libdnnl.*" "libmkl_sycl_blas.*"
+    "libmkl_intel_lp64.*" "libmkl_intel_ilp64.*" "libmkl_tbb_thread.*"
+    "libmkl_core.*" "libtbb.*"
     "libimf.*" "libsvml.*" "libintlc.*" "libirng.*"
   )
   sycl_staged=0
