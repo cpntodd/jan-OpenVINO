@@ -18,28 +18,6 @@ interface LlamacppDevicesStore {
   setActivations: (updates: Record<string, boolean>) => Promise<void>
 }
 
-function exposePairedSyclDevice(devices: DeviceList[]): DeviceList[] {
-  const openvino = devices.find((device) => /^OPENVINO\d+$/.test(device.id))
-  const hasSycl = devices.some((device) => /^SYCL\d+$/.test(device.id))
-
-  if (!openvino || hasSycl) return devices
-
-  const index = openvino.id.match(/\d+$/)?.[0] ?? '0'
-  return [
-    ...devices,
-    {
-      id: `SYCL${index}`,
-      name:
-        openvino.name === 'OpenVINO Runtime'
-          ? 'Intel GPU (SYCL)'
-          : openvino.name,
-      mem: openvino.mem,
-      free: openvino.free,
-      activated: false,
-    },
-  ]
-}
-
 export const useLlamacppDevices = create<LlamacppDevicesStore>((set, get) => ({
   devices: [],
   loading: false,
@@ -63,7 +41,10 @@ export const useLlamacppDevices = create<LlamacppDevicesStore>((set, get) => ({
         ? currentDeviceSetting.split(',').map(d => d.trim()).filter(Boolean)
         : []
 
-      const devicesWithActivation = exposePairedSyclDevice(devices).map((device) => ({
+      // Only persist IDs returned by this worker invocation. Backend libraries
+      // can load differently between runs, so inventing a paired device here
+      // can make a later engine start fail with "invalid device".
+      const devicesWithActivation = devices.map((device) => ({
         ...device,
         activated:
           // Empty device setting means all devices are activated
