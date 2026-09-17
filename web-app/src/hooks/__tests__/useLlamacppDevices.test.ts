@@ -17,17 +17,11 @@ vi.mock('@/hooks/useServiceHub', () => ({
 
 // Mock useModelProvider
 const mockUpdateProvider = vi.fn()
+const mockGetProviderByName = vi.fn()
 vi.mock('../useModelProvider', () => ({
   useModelProvider: {
     getState: () => ({
-      getProviderByName: () => ({
-        settings: [
-          {
-            key: 'device',
-            controller_props: { value: '' },
-          },
-        ],
-      }),
+      getProviderByName: mockGetProviderByName,
       updateProvider: mockUpdateProvider,
     }),
   },
@@ -47,6 +41,14 @@ describe('useLlamacppDevices', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetProviderByName.mockReturnValue({
+      settings: [
+        {
+          key: 'device',
+          controller_props: { value: '' },
+        },
+      ],
+    })
   })
 
   it('should initialize with default state', () => {
@@ -105,6 +107,33 @@ describe('useLlamacppDevices', () => {
         activated: true,
       },
     ])
+  })
+
+  it('clears a stale device ID before the engine can use it', async () => {
+    mockGetProviderByName.mockReturnValue({
+      settings: [
+        {
+          key: 'device',
+          controller_props: { value: 'SYCL0' },
+        },
+      ],
+    })
+    mockGetLlamacppDevices.mockResolvedValue([
+      { id: 'OPENVINO0', name: 'OpenVINO Runtime', mem: 15903, free: 15903 },
+    ])
+
+    const { result } = renderHook(() => useLlamacppDevices())
+
+    await act(async () => {
+      await result.current.fetchDevices()
+    })
+
+    expect(result.current.devices[0].activated).toBe(true)
+    expect(mockUpdateProvider).toHaveBeenCalledWith('llamacpp', {
+      settings: [
+        { key: 'device', controller_props: { value: '' } },
+      ],
+    })
   })
 
   it('should clear error', () => {

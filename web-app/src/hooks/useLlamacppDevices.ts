@@ -32,7 +32,7 @@ export const useLlamacppDevices = create<LlamacppDevicesStore>((set, get) => ({
       // Check current device setting from provider
       const { getProviderByName } = useModelProvider.getState()
       const llamacppProvider = getProviderByName('llamacpp')
-      const currentDeviceSetting = llamacppProvider?.settings.find(
+      let currentDeviceSetting = llamacppProvider?.settings.find(
         (s) => s.key === 'device'
       )?.controller_props.value as string
 
@@ -41,6 +41,35 @@ export const useLlamacppDevices = create<LlamacppDevicesStore>((set, get) => ({
         ? currentDeviceSetting.split(',').map(d => d.trim()).filter(Boolean)
         : []
 
+      const availableDeviceIds = new Set(devices.map((device) => device.id))
+      const validActivatedDevices = activatedDevices.filter((deviceId) =>
+        availableDeviceIds.has(deviceId)
+      )
+
+      // A previous version could persist an ID that was not emitted by the
+      // worker. Remove such stale IDs before the next model launch; an empty
+      // setting lets llama.cpp auto-select from the devices it did enumerate.
+      if (validActivatedDevices.length !== activatedDevices.length && llamacppProvider) {
+        currentDeviceSetting = validActivatedDevices.join(',')
+        const updatedSettings = llamacppProvider.settings.map((setting) =>
+          setting.key === 'device'
+            ? {
+                ...setting,
+                controller_props: {
+                  ...setting.controller_props,
+                  value: currentDeviceSetting,
+                },
+              }
+            : setting
+        )
+        await getServiceHub()
+          .providers()
+          .updateSettings('llamacpp', updatedSettings)
+        useModelProvider.getState().updateProvider('llamacpp', {
+          settings: updatedSettings,
+        })
+      }
+
       // Only persist IDs returned by this worker invocation. Backend libraries
       // can load differently between runs, so inventing a paired device here
       // can make a later engine start fail with "invalid device".
@@ -48,7 +77,7 @@ export const useLlamacppDevices = create<LlamacppDevicesStore>((set, get) => ({
         ...device,
         activated:
           // Empty device setting means all devices are activated
-          !currentDeviceSetting || currentDeviceSetting === '' || activatedDevices.includes(device.id),
+          !currentDeviceSetting || currentDeviceSetting === '' || validActivatedDevices.includes(device.id),
       }))
 
       set({ devices: devicesWithActivation, loading: false })
