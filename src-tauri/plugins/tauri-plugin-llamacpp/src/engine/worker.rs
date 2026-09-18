@@ -10,12 +10,35 @@
 //! worker shipped alongside it as a sidecar.
 
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
+
+/// Library search path for a bundled worker on Linux.
+///
+/// SYCL's Unified Runtime loads its Level Zero adapter as a second-level
+/// dependency. The adapter is staged beside the worker, but Linux resolves
+/// that dependency before the worker can run, so this must be set by Jan
+/// *before* spawning the process. Retain an inherited path for explicit user
+/// overrides and development environments.
+#[cfg(target_os = "linux")]
+pub fn bundled_library_path(exe: &Path, inherited: Option<OsString>) -> Option<OsString> {
+    let dir = exe.parent()?;
+    let mut paths = vec![dir.to_path_buf()];
+    if let Some(inherited) = inherited {
+        paths.extend(std::env::split_paths(&inherited));
+    }
+    std::env::join_paths(paths).ok()
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn bundled_library_path(_exe: &Path, _inherited: Option<OsString>) -> Option<OsString> {
+    None
+}
 
 /// The worker prints this and nothing else on stdout, then serves. Reading a
 /// structured line beats the router path's stderr scraping: there is no
@@ -371,6 +394,9 @@ pub async fn spawn(
     log::info!("starting {} {}", exe.display(), args.join(" "));
 
     let mut cmd = Command::new(exe);
+    if let Some(path) = bundled_library_path(exe, std::env::var_os("LD_LIBRARY_PATH")) {
+        cmd.env("LD_LIBRARY_PATH", path);
+    }
     // Without this the worker flashes a console window on Windows, the way
     // every other spawn in this plugin already avoids.
     jan_utils::system::setup_windows_process_flags(&mut cmd);
@@ -691,5 +717,22 @@ mod tests {
             .await
             .expect_err("a silent exit must fail");
         assert!(matches!(err, WorkerError::Handshake(_)), "got {err:?}");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn bundled_library_path_prefixes_the_worker_directory() {
+        let exe = Path::new("/opt/Jan/resources/bin/jan-llama-worker");
+        let inherited = std::env::join_paths(["/custom/lib", "/another/lib"]).unwrap();
+        let path = bundled_library_path(exe, Some(inherited)).unwrap();
+        let paths = std::env::split_paths(&path).collect::<Vec<_>>();
+        assert_eq!(
+            paths,
+            vec![
+                PathBuf::from("/opt/Jan/resources/bin"),
+                PathBuf::from("/custom/lib"),
+                PathBuf::from("/another/lib"),
+            ]
+        );
     }
 }

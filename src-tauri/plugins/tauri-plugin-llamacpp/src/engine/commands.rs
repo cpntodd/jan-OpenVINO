@@ -242,6 +242,9 @@ pub async fn engine_devices<R: tauri::Runtime>(
 ) -> Result<Vec<EngineDevice>, String> {
     let exe = resolve_worker_exe(&app_handle)?;
     let mut cmd = tokio::process::Command::new(&exe);
+    if let Some(path) = worker::bundled_library_path(&exe, std::env::var_os("LD_LIBRARY_PATH")) {
+        cmd.env("LD_LIBRARY_PATH", path);
+    }
     cmd.arg("--list-devices").envs(envs);
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
